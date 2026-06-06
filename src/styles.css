@@ -1,0 +1,369 @@
+:root {
+  --bg: #f4f5f7;
+  --card-bg: #ffffff;
+  --border: #d7dbe0;
+  --text: #1f2329;
+  --muted: #6b7280;
+  --accent: #2f56d6;
+  --accent-text: #ffffff;
+  --error: #c0392b;
+  --error-bg: #fdecea;
+  --radius: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.45;
+}
+
+.app-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+.card h2 {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+}
+
+/* Player form layout: two columns (left = names, right = the rest),
+   collapsing to one column on narrow screens. */
+.player-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1.5rem;
+}
+
+.player-form-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .player-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* All fields: label to the left of the input. */
+.field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.field > label {
+  flex: 0 0 6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.field > input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* The player form has longer field names, so give those labels more room. */
+.player-form-col .field > label {
+  flex-basis: 10rem;
+}
+
+/* Age division: horizontal radio options. */
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.radio-option span {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: inherit;
+}
+
+.field input {
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+/* Combobox: text input with a custom dropdown rendered below, scrollable. */
+.combobox {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.combobox > input {
+  width: 100%;
+}
+
+.combobox-list {
+  position: absolute;
+  top: calc(100% + 0.15rem);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  max-height: 11rem;
+  overflow-y: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.combobox-option {
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.combobox-option:hover {
+  background: var(--bg);
+}
+
+.dob-field .dob-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dob-field .dob-inputs input {
+  width: 4rem;
+  text-align: center;
+}
+
+.dob-field .dob-sep {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* Team toolbar */
+.team-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.team-toolbar h2 {
+  margin: 0;
+}
+
+/* Team grid: six per-Pokémon cards, two across by three down,
+   collapsing to a single column on narrow screens. */
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .team-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pokemon-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  background: #fbfcfe;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Reorder arrow buttons (team cards and move slots). */
+.arrow-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.15rem 0.3rem;
+}
+
+.arrow-btn:not(:disabled):hover {
+  background: var(--bg);
+}
+
+.arrow-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Four-direction card reorder, right-aligned at the top of the card. */
+.card-reorder {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+/* Up/down move arrows, stacked to the right of the move input. */
+.reorder {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reorder .arrow-btn {
+  padding: 0 0.3rem;
+}
+
+/* Two-column body: left (Ability/Held Item/Moves) takes the remaining width so
+   long values get room; right (the six stats) sizes to its content so each stat
+   label sits right next to its input. */
+.pokemon-body {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.6rem 1rem;
+}
+
+.pokemon-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* Stats column: compact, fixed-width labels and inputs so labels are flush
+   with their inputs rather than spread across half the card. */
+.pokemon-col-stats .field > label {
+  flex: 0 0 2.5rem;
+}
+
+.pokemon-col-stats .field > input {
+  flex: 0 0 auto;
+  width: 4.5rem;
+}
+
+/* Error flagging (used by later milestones) */
+.field-error input,
+input.field-error {
+  border-color: var(--error);
+  background: var(--error-bg);
+}
+
+/* Required player field left empty on export: red label + red input borders. */
+.field-invalid > label {
+  color: var(--error);
+}
+
+.field-invalid input {
+  border-color: var(--error);
+  background: var(--error-bg);
+}
+
+.warning {
+  color: var(--error);
+  font-size: 0.8rem;
+}
+
+/* Buttons */
+.btn {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+  padding: 0.55rem 1rem;
+  font-size: 0.95rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn:hover {
+  filter: brightness(0.95);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--accent);
+}
+
+/* Modal scaffold (used by later milestones) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  width: min(560px, 90vw);
+}
+
+.modal h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.modal-hint {
+  margin: 0 0 0.85rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.import-textarea {
+  width: 100%;
+  min-height: 14rem;
+  resize: vertical;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.import-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
