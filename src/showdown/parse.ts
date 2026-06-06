@@ -1,4 +1,4 @@
-// Showdown text -> PokemonEntry[] (+ per-field errors) (PLAN §6).
+// Showdown text -> PokemonEntry[] (+ per-field errors).
 
 import type { PokemonEntry, StatBlock } from "../types.js";
 import { normalizeName } from "./name.js";

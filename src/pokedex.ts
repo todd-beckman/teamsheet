@@ -1,4 +1,4 @@
-// Pokédex lookup adapter (PLAN §5).
+// Pokédex lookup adapter.
 // Imports the static pokedex data module (src/pokedex-data.ts) and exposes a
 // single exact-match base-stat lookup.
 

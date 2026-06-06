@@ -1,4 +1,4 @@
-// PDF fill round-trip tests (PLAN §9.2): load real PDF, fill, reload, assert.
+// PDF fill round-trip tests: load real PDF, fill, reload, assert.
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

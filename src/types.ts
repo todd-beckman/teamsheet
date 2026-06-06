@@ -1,4 +1,4 @@
-// Core data model for Teamsheet (PLAN §4).
+// Core data model for Teamsheet.
 // All player fields are opaque, user-entered strings printed verbatim.
 
 export interface PlayerInfo {
@@ -29,12 +29,12 @@ export interface PokemonEntry {
   natureAlignment: string; // e.g. "Adamant" (printed as Stat Alignment)
   evs: Partial<StatBlock>; // parsed EV points
   moves: string[]; // up to 4, "- " stripped
-  computedStats: StatBlock; // result of §7 formulas (page 1 only)
+  computedStats: StatBlock; // result of the stat formulas (page 1 only)
   fieldErrors: Set<keyof PokemonEntry>; // fields flagged invalid for the UI
 }
 
 /**
- * Per-Pokémon validation result (PLAN §8.1). The legacy `fieldErrors` set on
+ * Per-Pokémon validation result. The legacy `fieldErrors` set on
  * `PokemonEntry` cannot express per-stat or per-move-slot granularity, so the
  * validation module (`validation.ts`) returns this richer, additive structure
  * which the UI consumes for error styling.
@@ -55,7 +55,7 @@ export interface PokemonErrors {
   item: boolean;
 }
 
-/** Aggregate validation result for the whole app (PLAN §8.1). */
+/** Aggregate validation result for the whole app. */
 export interface ValidationResult {
   team: PokemonErrors[]; // length 6, parallel to AppState.team
   player: Set<string>; // ids of empty required player fields (on export only)

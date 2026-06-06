@@ -1,4 +1,4 @@
-// PDF field-map tests (PLAN §9.1/§9.2): page-2 subset, stat name mapping, blanks.
+// PDF field-map tests: page-2 subset, stat name mapping, blanks.
 
 import { describe, it, expect } from "vitest";
 import { buildFieldValues } from "./fields.js";

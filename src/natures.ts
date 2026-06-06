@@ -1,4 +1,4 @@
-// Nature -> { plus, minus } stat alignment table (PLAN §7).
+// Nature -> { plus, minus } stat alignment table.
 // Rows = boosted stat, columns = lowered stat. HP is never affected.
 // Neutral (diagonal) natures have plus === minus, yielding no net change.
 

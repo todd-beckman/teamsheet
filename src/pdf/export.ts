@@ -1,4 +1,4 @@
-// Trigger a browser download of the generated PDF bytes (PLAN §9.2).
+// Trigger a browser download of the generated PDF bytes.
 
 /**
  * Download `bytes` as a PDF file via a temporary object URL + `<a download>`.

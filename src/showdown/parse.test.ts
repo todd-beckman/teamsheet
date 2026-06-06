@@ -1,4 +1,4 @@
-// Showdown parser tests (PLAN §6) against the real example fixture.
+// Showdown parser tests against the real example fixture.
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -30,7 +30,7 @@ describe("parseShowdown(example)", () => {
     expect(mon.fieldErrors.size).toBe(0);
   });
 
-  it("computes Sneasler stats via the §7 formulas (Jolly)", () => {
+  it("computes Sneasler stats via the stat formulas (Jolly)", () => {
     expect(team[0].computedStats).toEqual({
       hp: 157,
       atk: 182,

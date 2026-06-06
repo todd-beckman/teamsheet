@@ -1,4 +1,4 @@
-// Stat formula + nature alignment tests (PLAN §7).
+// Stat formula + nature alignment tests.
 
 import { describe, it, expect } from "vitest";
 import { alignmentMultiplier, computeStats } from "./stats.js";

@@ -1,4 +1,4 @@
-// HP / other-stat formulas and alignment multipliers (PLAN §7).
+// HP / other-stat formulas and alignment multipliers.
 
 import type { StatBlock } from "./types.js";
 import type { BaseStats } from "./pokedex.js";
@@ -26,7 +26,7 @@ export function alignmentMultiplier(
 }
 
 /**
- * Compute the printed stat block (PLAN §7):
+ * Compute the printed stat block:
  *   HP        = base.hp + ev + 75
  *   OtherStat = floor((base + ev + 20) * alignmentMultiplier)
  */

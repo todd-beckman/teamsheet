@@ -1,4 +1,4 @@
-// Name / forme / gender normalization tests (PLAN §6, name.ts).
+// Name / forme / gender normalization tests.
 
 import { describe, it, expect } from "vitest";
 import { normalizeName, canonicalSpecies } from "./name.js";

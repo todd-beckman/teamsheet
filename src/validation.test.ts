@@ -1,4 +1,4 @@
-// Validation tests (PLAN §8.1). Each rule, live vs export.
+// Validation tests. Each rule, live vs export.
 
 import { describe, it, expect } from "vitest";
 import {

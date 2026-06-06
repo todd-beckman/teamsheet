@@ -159,10 +159,15 @@ body {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  /* Allow the row to shrink inside a narrow column rather than overflow. */
+  min-width: 0;
 }
 
 .dob-field .dob-inputs input {
-  width: 4rem;
+  /* Prefer 4rem, but shrink when the column gets tight (avoids h-scroll). */
+  flex: 0 1 4rem;
+  width: auto;
+  min-width: 0;
   text-align: center;
 }
 
@@ -274,7 +279,7 @@ body {
   width: 4.5rem;
 }
 
-/* Error flagging (used by later milestones) */
+/* Error flagging */
 .field-error input,
 input.field-error {
   border-color: var(--error);
@@ -316,7 +321,7 @@ input.field-error {
   color: var(--accent);
 }
 
-/* Modal scaffold (used by later milestones) */
+/* Modal scaffold */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -366,4 +371,71 @@ input.field-error {
   justify-content: flex-end;
   gap: 0.6rem;
   margin-top: 1rem;
+}
+
+/* Each Pokémon card is a size container so its body can collapse based on the
+   card's own width — not the viewport. This is what keeps a card in a 2-across
+   grid from overflowing into its neighbour when the cards get narrow. */
+.pokemon-card {
+  container-type: inline-size;
+}
+
+/* The body columns must be allowed to shrink; otherwise their inputs keep
+   their intrinsic width and spill out of the card. */
+.pokemon-col {
+  min-width: 0;
+}
+
+/* Narrow card: stack the body (ability/item/moves above the stats), drop each
+   label onto its own line, and lay the six stats out two-across so they stay
+   reachable instead of being clipped by the fixed stats column. */
+@container (max-width: 22rem) {
+  .pokemon-body {
+    grid-template-columns: 1fr;
+  }
+
+  /* Label wraps to its own line; the input (plus any trailing reorder arrows)
+     then sits on the line below at full width. */
+  .pokemon-card .field {
+    flex-wrap: wrap;
+    gap: 0.3rem 0.6rem;
+  }
+
+  .pokemon-card .field > label {
+    flex: 1 1 100%;
+  }
+
+  .pokemon-col-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem 1rem;
+  }
+
+  /* Keep the stats compact: small label beside a flexible input. */
+  .pokemon-col-stats .field > label {
+    flex: 0 0 2.5rem;
+  }
+
+  .pokemon-col-stats .field > input {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+  }
+}
+
+/* Phone: tighten the page padding and stack the player-form labels so the
+   wide labels stop squeezing their inputs. */
+@media (max-width: 640px) {
+  .app-main {
+    padding: 1rem 1rem 2.5rem;
+  }
+
+  .player-form-col .field {
+    flex-wrap: wrap;
+    gap: 0.3rem 0.6rem;
+  }
+
+  .player-form-col .field > label {
+    flex: 1 1 100%;
+  }
 }

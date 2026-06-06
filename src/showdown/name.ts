@@ -1,4 +1,4 @@
-// Name / forme / gender normalization (display vs lookup) (PLAN §6).
+// Name / forme / gender normalization (display vs lookup).
 
 export interface NormalizedName {
   displayName: string; // what we print in the name field
@@ -20,7 +20,7 @@ export function canonicalSpecies(name: string): string {
 
 /**
  * Normalize the raw name text that appears before the `@` on a Showdown
- * first line into a `{ displayName, lookupName }` pair (PLAN §6).
+ * first line into a `{ displayName, lookupName }` pair.
  */
 export function normalizeName(rawNameBeforeAt: string): NormalizedName {
   let name = rawNameBeforeAt.trim();

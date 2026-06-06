@@ -1,5 +1,5 @@
-// Validation logic (PLAN §8.1). Pure functions returning per-field error flags
-// for the UI to surface. Milestone 5 calls `validateForExport` to gate export.
+// Validation logic. Pure functions returning per-field error flags
+// for the UI to surface. `validateForExport` gates export.
 //
 // Two flavours:
 //   - "live" validation (default): runs while editing. Covers stat-in-range and
@@ -8,7 +8,7 @@
 //   - "export" validation: live checks PLUS the on-export requirements (≥1 move,
 //     ability present). Built here so M5 can wire the confirm prompt.
 //
-// All string comparisons are case-insensitive (PLAN §8.1).
+// All string comparisons are case-insensitive.
 
 import type {
   AppState,
@@ -51,7 +51,7 @@ function emptyErrors(): PokemonErrors {
  *   1. Stat in range — when the species AND stat alignment (nature) are both set
  *      and a stat has a non-empty numeric value, flag it invalid if outside
  *      [min, max], where min = stat at 0 stat points and max = at 32 stat points
- *      (§7 formulas with that base + nature).
+ *      (stat formulas with that base + nature).
  *   2. Ability matches species — when the species is set, flag the ability if it
  *      isn't (case-insensitively) one of `Species.abilities`.
  *
@@ -238,8 +238,8 @@ export function validateLive(state: AppState): ValidationResult {
 }
 
 /**
- * Export-time validation (PLAN §8.1) — live checks PLUS ≥1 move and ability
- * present. Milestone 5 calls this to gate the export confirm prompt.
+ * Export-time validation — live checks PLUS ≥1 move and ability
+ * present. Gates the export confirm prompt.
  */
 export function validateForExport(state: AppState): ValidationResult {
   return validate(state, true);

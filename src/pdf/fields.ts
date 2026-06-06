@@ -1,4 +1,4 @@
-// AppState -> { fieldName: value } map (p1_* and p2_*) (PLAN §9.1 / §9.2).
+// AppState -> { fieldName: value } map (p1_* and p2_*).
 //
 // Pure & node-testable: no DOM, no fetch, no pdf-lib. Builds the full AcroForm
 // text-field map for both pages. Page 2 is a strict subset — it omits the

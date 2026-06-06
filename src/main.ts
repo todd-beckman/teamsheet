@@ -1,8 +1,8 @@
 // Bootstrap: build the empty AppState, render the player form, wire the
 // "Import Showdown" button to the import modal, and render the team table.
 //
-// Milestone 4: every input is two-way bound back into `state` on edit, and live
-// validation (PLAN §8.1) re-flags invalid stats / abilities on every change.
+// Every input is two-way bound back into `state` on edit, and live
+// validation re-flags invalid stats / abilities on every change.
 // Stats are exposed as directly-editable inputs and bound straight to
 // `entry.computedStats`; they are NOT auto-recomputed when name/nature change
 // (see report — supersedes the older "editing recomputes stats" note, which
@@ -29,7 +29,7 @@ import { natures } from "./natures.js";
 import { fillTeamsheet, fetchTemplate } from "./pdf/fill.js";
 import { downloadPdf } from "./pdf/export.js";
 
-// In-memory application state (read/written by later milestones).
+// In-memory application state.
 const state: AppState = createEmptyState();
 
 // Left column holds the name + Switch identity fields; the right column holds
@@ -189,7 +189,7 @@ function renderPlayerForm(container: HTMLElement): void {
   const dobInputs = document.createElement("div");
   dobInputs.className = "dob-inputs";
 
-  // Inline soft warning for the DOB checks (PLAN §8): warn, never block.
+  // Inline soft warning for the DOB checks: warn, never block.
   const dobWarning = document.createElement("span");
   dobWarning.className = "warning";
 
@@ -229,7 +229,7 @@ function renderPlayerForm(container: HTMLElement): void {
   container.append(grid);
 }
 
-// Soft DOB validation (PLAN §8): warn if neither of the first two segments is a
+// Soft DOB validation: warn if neither of the first two segments is a
 // plausible month (≤ 12), and warn if the year segment is < 2026. Never blocks.
 function updateDobWarning(el: HTMLSpanElement): void {
   const [a, b, year] = state.player.dateOfBirth;
@@ -266,7 +266,7 @@ function updateDobWarning(el: HTMLSpanElement): void {
 // Build one per-Pokémon card: Name and Stat Alignment span the full card width,
 // then two columns — left holds Ability, Held Item and the four moves; right
 // holds the six computed stats (numeric). Empty/partial slots still render every
-// field blank (PLAN §12: fewer than 6 mons → remaining slots blank).
+// field blank (fewer than 6 mons → remaining slots blank).
 // The 25 natures with the neutral ones (plus === minus, no net change) last.
 function orderedNatures(): string[] {
   const names = Object.keys(natures);
@@ -572,7 +572,7 @@ function renderTeam(_currentState: AppState): void {
   revalidate();
 }
 
-// Run live validation (PLAN §8.1) and apply error styling to the flagged inputs.
+// Run live validation and apply error styling to the flagged inputs.
 function revalidate(): void {
   const result = validateLive(state);
   result.team.forEach((errors, i) => {
@@ -622,7 +622,7 @@ function renderExportButton(container: HTMLElement): void {
   button.type = "button";
   button.className = "btn";
   button.textContent = "Export PDF";
-  // Always enabled — date warnings never block export (PLAN §8.1, §9.2).
+  // Always enabled — date warnings never block export.
   button.addEventListener("click", () => {
     void handleExport();
   });

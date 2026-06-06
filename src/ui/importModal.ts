@@ -1,4 +1,4 @@
-// Import modal (PLAN §8): a self-contained, dependency-light component that
+// Import modal: a self-contained, dependency-light component that
 // renders a backdrop + dialog with a Showdown <textarea>, Submit, and Cancel.
 //
 // Submit calls onSubmit(textarea.value) then closes. Cancel / backdrop click /

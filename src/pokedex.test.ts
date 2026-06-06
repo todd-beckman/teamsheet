@@ -1,4 +1,4 @@
-// Pokédex resolution tests (PLAN §5/§6): key/name/gender/regional index.
+// Pokédex resolution tests: key/name/gender/regional index.
 
 import { describe, it, expect } from "vitest";
 import {

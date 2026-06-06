@@ -1,4 +1,4 @@
-// Empty AppState factory (PLAN §4): empty player + 6 empty Pokémon slots.
+// Empty AppState factory: empty player + 6 empty Pokémon slots.
 
 import type {
   AppState,

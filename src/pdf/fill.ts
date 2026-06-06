@@ -1,4 +1,4 @@
-// Load the fillable PDF, set each AcroForm text field, save the bytes (PLAN §9.2).
+// Load the fillable PDF, set each AcroForm text field, save the bytes.
 //
 // The fillable core (`fillTeamsheet`) is kept fetch-free so it can be exercised
 // from node (read the PDF off disk, pass the bytes in). The browser entry point
