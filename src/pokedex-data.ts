@@ -7,7 +7,9 @@ export interface BaseStats {
     spe: number;
 }
 
-export interface Species {
+// One Pokémon (a single forme). Pokémon sharing a `num` are the same Species
+// (e.g. Ninetales and Ninetales-Alola, both num 38).
+export interface Pokemon {
     num: number;
     name: string;
     forme?: string;
@@ -16,7 +18,7 @@ export interface Species {
 }
 
 /** Static lookup keyed by Showdown import token; `name` is the canonical name. */
-export const pokedex: Record<string, Species> = {
+export const pokedex: Record<string, Pokemon> = {
     "Bulbasaur": { num: 1, name: "Bulbasaur", baseStats: { hp: 45, atk: 49, def: 49, spa: 65, spd: 65, spe: 45 }, abilities: ["Overgrow", "Chlorophyll"] },
     "Ivysaur": { num: 2, name: "Ivysaur", baseStats: { hp: 60, atk: 62, def: 63, spa: 80, spd: 80, spe: 60 }, abilities: ["Overgrow", "Chlorophyll"] },
     "Venusaur": { num: 3, name: "Venusaur", baseStats: { hp: 80, atk: 82, def: 83, spa: 100, spd: 100, spe: 80 }, abilities: ["Overgrow", "Chlorophyll"] },

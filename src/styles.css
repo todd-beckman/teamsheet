@@ -296,6 +296,41 @@ input.field-error {
   background: var(--error-bg);
 }
 
+/* Tooltip explaining why a field is flagged invalid. The reason is stored in
+   `data-tooltip` on the `.field`; it shows on hover and on keyboard/tap focus
+   (so it works without a mouse), positioned above the field. */
+.field[data-tooltip] {
+  position: relative;
+}
+
+.field[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  z-index: 50;
+  width: max-content;
+  max-width: 15rem;
+  padding: 0.4rem 0.55rem;
+  background: var(--text);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.35;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+
+.field[data-tooltip]:hover::after,
+.field[data-tooltip]:focus-within::after {
+  opacity: 1;
+  visibility: visible;
+}
+
 .warning {
   color: var(--error);
   font-size: 0.8rem;

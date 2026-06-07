@@ -1,7 +1,7 @@
 // Stat formula + nature alignment tests.
 
 import { describe, it, expect } from "vitest";
-import { alignmentMultiplier, computeStats } from "./stats.js";
+import { alignmentMultiplier, computeStats, statPointsFor } from "./stats.js";
 import type { BaseStats } from "./pokedex.js";
 import type { StatBlock } from "./types.js";
 
@@ -100,5 +100,34 @@ describe("computeStats", () => {
     const base: BaseStats = { hp: 50, atk: 50, def: 50, spa: 50, spd: 50, spe: 50 };
     const stats = computeStats(base, {}, "Serious");
     expect(stats).toEqual({ hp: 125, atk: 70, def: 70, spa: 70, spd: 70, spe: 70 });
+  });
+});
+
+describe("statPointsFor (inverse of computeStats)", () => {
+  const base: BaseStats = { hp: 95, atk: 115, def: 90, spa: 81, spd: 90, spe: 60 };
+
+  it("exactly recovers points for HP, neutral and boosted stats", () => {
+    // Adamant => +Atk (×1.1) / -SpA (×0.9); def/spd/spe neutral. The boosted
+    // stat is the important case: 32 points must read back 32, not ~35 (the
+    // value *gained* is ~35 — a naive value difference would over-count).
+    for (const stat of ["hp", "atk", "def", "spd", "spe"] as Array<
+      keyof StatBlock
+    >) {
+      for (let points = 0; points <= 32; points++) {
+        const value = computeStats(base, { [stat]: points }, "Adamant")[stat];
+        expect(statPointsFor(base, value, "Adamant", stat)).toBe(points);
+      }
+    }
+  });
+
+  it("is a right inverse for the lowered stat (×0.9 floors collide)", () => {
+    // Several point counts can share one printed value for a ×0.9 stat, so an
+    // exact recovery is impossible; the recovered count must at least reproduce
+    // the same value when fed back through computeStats.
+    for (let points = 0; points <= 32; points++) {
+      const value = computeStats(base, { spa: points }, "Adamant").spa;
+      const recovered = statPointsFor(base, value, "Adamant", "spa");
+      expect(computeStats(base, { spa: recovered }, "Adamant").spa).toBe(value);
+    }
   });
 });

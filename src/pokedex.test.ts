@@ -3,7 +3,7 @@
 import { describe, it, expect } from "vitest";
 import {
   resolveLookupKey,
-  findSpecies,
+  findPokemon,
   getBaseStats,
   pokedex,
 } from "./pokedex.js";
@@ -41,11 +41,11 @@ describe("resolveLookupKey", () => {
   it("resolves regional formes both by key and by canonical 'Alolan X' name", () => {
     expect(resolveLookupKey("Raichu-Alola")).toBe("Raichu-Alola");
     expect(resolveLookupKey("Alolan Raichu")).toBe("Raichu-Alola");
-    // The base species stays distinct.
+    // The base Pokémon stays distinct (same Species/num, different forme).
     expect(resolveLookupKey("Raichu")).toBe("Raichu");
   });
 
-  it("keeps Floette and Floette-Eternal as distinct resolvable species (no import alias here)", () => {
+  it("keeps Floette and Floette-Eternal as distinct resolvable Pokémon (no import alias here)", () => {
     expect(resolveLookupKey("Floette")).toBe("Floette");
     expect(resolveLookupKey("Floette-Eternal")).toBe("Floette-Eternal");
     // The Eternal canonical name "Eternal Floette" also resolves.
@@ -60,20 +60,29 @@ describe("resolveLookupKey", () => {
   });
 });
 
-describe("findSpecies", () => {
-  it("returns the species record with canonical name for a gendered female", () => {
-    const sp = findSpecies("Indeedee-F");
+describe("findPokemon", () => {
+  it("returns the Pokémon record with canonical name for a gendered female", () => {
+    const sp = findPokemon("Indeedee-F");
     expect(sp).not.toBeNull();
     expect(sp!.name).toBe("Indeedee Female");
   });
 
   it("returns the male record for the bare gendered key", () => {
-    const sp = findSpecies("Indeedee");
+    const sp = findPokemon("Indeedee");
     expect(sp!.name).toBe("Indeedee Male");
   });
 
   it("returns null for an unresolved name", () => {
-    expect(findSpecies("Notamon")).toBeNull();
+    expect(findPokemon("Notamon")).toBeNull();
+  });
+
+  it("treats distinct formes that share a num as the same Species", () => {
+    // Ninetales and Ninetales-Alola are different Pokémon (formes) but one
+    // Species — they share `num` (38).
+    const base = findPokemon("Ninetales");
+    const alola = findPokemon("Ninetales-Alola");
+    expect(base!.num).toBe(alola!.num);
+    expect(base!.name).not.toBe(alola!.name);
   });
 });
 

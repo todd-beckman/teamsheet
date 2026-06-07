@@ -2,9 +2,9 @@
 // for the UI to surface. `validateForExport` gates export.
 //
 // Two flavours:
-//   - "live" validation (default): runs while editing. Covers stat-in-range and
-//     ability-matches-species. Skips species-dependent checks when the name
-//     doesn't resolve.
+//   - "live" validation (default): runs while editing. Covers stat-in-range,
+//     ability-matches-Pokémon, and the cross-team Species Clause. Skips
+//     Pokémon-dependent checks when the name doesn't resolve.
 //   - "export" validation: live checks PLUS the on-export requirements (≥1 move,
 //     ability present). Built here so M5 can wire the confirm prompt.
 //
@@ -17,8 +17,8 @@ import type {
   StatBlock,
   ValidationResult,
 } from "./types.js";
-import { findSpecies } from "./pokedex.js";
-import { computeStats } from "./stats.js";
+import { findPokemon } from "./pokedex.js";
+import { computeStats, statPointsFor } from "./stats.js";
 import { natures } from "./natures.js";
 
 const STAT_KEYS: Array<keyof StatBlock> = [
@@ -29,6 +29,12 @@ const STAT_KEYS: Array<keyof StatBlock> = [
   "spd",
   "spe",
 ];
+
+// Stat-point budget: each stat may hold at most 32 points, and a Pokémon may
+// spend at most 66 across all six. Spending fewer than 66 is legal but flagged
+// on export as a probable mistake.
+export const MAX_STAT_POINTS_PER_STAT = 32;
+export const MAX_STAT_POINTS_TOTAL = 66;
 
 // The explicit "no item" marker written on export for an item-less Pokémon.
 // Treated as "no item" (not a real item) by the duplicate check.
@@ -41,23 +47,46 @@ function emptyErrors(): PokemonErrors {
     moves: new Set<number>(),
     nature: false,
     item: false,
+    species: false,
+    reasons: new Map<string, string>(),
   };
+}
+
+// Record (and accumulate) the human-readable reason a field is flagged, used for
+// the field's hover tooltip. Multiple reasons for one field are joined.
+function addReason(errors: PokemonErrors, key: string, msg: string): void {
+  const existing = errors.reasons.get(key);
+  if (!existing) {
+    errors.reasons.set(key, msg);
+  } else if (!existing.includes(msg)) {
+    errors.reasons.set(key, `${existing} ${msg}`);
+  }
 }
 
 /**
  * Validate a single Pokémon entry.
  *
  * Live checks (always applied):
- *   1. Stat in range — when the species AND stat alignment (nature) are both set
+ *   1. Stat in range — when the Pokémon AND stat alignment (nature) are both set
  *      and a stat has a non-empty numeric value, flag it invalid if outside
  *      [min, max], where min = stat at 0 stat points and max = at 32 stat points
  *      (stat formulas with that base + nature).
- *   2. Ability matches species — when the species is set, flag the ability if it
- *      isn't (case-insensitively) one of `Species.abilities`.
+ *   1b. Total stat-point budget — at most 66 points across all six stats (the
+ *      ≤ 32-per-stat cap is the upper end of the rule-1 range).
+ *   2. Ability matches the Pokémon — when the Pokémon is set, flag the ability if
+ *      it isn't (case-insensitively) one of `Pokemon.abilities`.
  *
  * Export checks (only when `forExport` is true):
  *   3. ≥1 move — if the entry has no moves, flag the first move slot.
  *   4. Ability present — if the ability is empty, flag the ability field.
+ *   5. Stat points fully spent — fewer than 66 across the six stats flags them
+ *      (legal, but probably a mistake; `validate` adds a team-level message).
+ *      Points are read at the MINIMUM that reaches each value, so when the
+ *      shortfall is exactly one and the hindered stat could absorb a wasted
+ *      point, the reason says so instead of asserting points are missing.
+ *
+ * The Species Clause (no two team members share a pokedex `num`) is cross-team
+ * and so lives in `validate`/`flagDuplicateSpecies`, not here.
  *
  * Empty slots (no name, no ability, no moves, no stats) produce no errors during
  * live validation, and on export only contribute the missing-move/ability flags
@@ -69,7 +98,7 @@ export function validateEntry(
 ): PokemonErrors {
   const errors = emptyErrors();
 
-  const species = findSpecies(entry.displayName);
+  const pokemon = findPokemon(entry.displayName);
   // Resolve the nature case-insensitively to the canonical table key so
   // `computeStats` applies the right alignment regardless of typed casing.
   const nature = resolveNature(entry.natureAlignment);
@@ -77,31 +106,93 @@ export function validateEntry(
   // Stat alignment, when provided, must be one of the 25 natures.
   if (entry.natureAlignment.trim() !== "" && nature === null) {
     errors.nature = true;
+    addReason(errors, "nature", "Not one of the 25 natures.");
   }
 
-  // 1. Stat-in-range: requires a resolved species and a recognized nature.
-  if (species && nature) {
-    const minStats = computeStats(species.baseStats, zeroStatPoints(), nature);
-    const maxStats = computeStats(species.baseStats, allStatPoints(32), nature);
+  // 1. Stat-in-range: requires a resolved Pokémon and a recognized nature. The
+  //    valid window is [0 points, 32 points], so an out-of-range value is also
+  //    how the "≤ 32 points per stat" cap is enforced.
+  if (pokemon && nature) {
+    const minStats = computeStats(pokemon.baseStats, zeroStatPoints(), nature);
+    const maxStats = computeStats(
+      pokemon.baseStats,
+      allStatPoints(MAX_STAT_POINTS_PER_STAT),
+      nature,
+    );
     for (const key of STAT_KEYS) {
       const value = entry.computedStats[key];
       // Only validate non-empty numeric values. `0` is a legitimate value but a
       // computed stat is never 0 (HP/other formulas add constants), so a 0 here
       // means "unset" and is skipped.
       if (!Number.isFinite(value) || value === 0) continue;
-      if (value < minStats[key] || value > maxStats[key]) {
+      if (value < minStats[key]) {
         errors.stats.add(key);
+        addReason(errors, `stat:${key}`, "Below the minimum for this Pokémon and nature.");
+      } else if (value > maxStats[key]) {
+        errors.stats.add(key);
+        addReason(
+          errors,
+          `stat:${key}`,
+          `Above the maximum (more than ${MAX_STAT_POINTS_PER_STAT} stat points).`,
+        );
       }
     }
   }
 
-  // 2. Ability matches species (case-insensitive).
+  // 1b. Total stat-point budget: at most 66 points across all six stats. Over
+  //     the limit is a hard error (live); under is legal but flagged on export
+  //     only (the player probably forgot to spend everything).
+  const points = statPoints(entry);
+  if (points) {
+    if (points.total > MAX_STAT_POINTS_TOTAL) {
+      for (const key of points.setKeys) {
+        errors.stats.add(key);
+        addReason(
+          errors,
+          `stat:${key}`,
+          `Stat points total ${points.total}, over the ${MAX_STAT_POINTS_TOTAL} limit.`,
+        );
+      }
+    } else if (
+      forExport &&
+      points.setKeys.length > 0 &&
+      points.total < MAX_STAT_POINTS_TOTAL
+    ) {
+      // If accounting for one possible wasted point on the hindered stat would
+      // reach 66, the shortfall is ambiguous: either points are unallocated or a
+      // point is wasted there.
+      const wasteCouldExplain =
+        points.wastedHindered !== null &&
+        points.total + 1 >= MAX_STAT_POINTS_TOTAL;
+      for (const key of points.setKeys) {
+        errors.stats.add(key);
+        if (wasteCouldExplain && key === points.wastedHindered) {
+          addReason(
+            errors,
+            `stat:${key}`,
+            `Stat points reach only ${points.total} of ${MAX_STAT_POINTS_TOTAL} — either some are unallocated or a point is wasted on this hindered stat.`,
+          );
+        } else {
+          addReason(
+            errors,
+            `stat:${key}`,
+            `Only ${points.total} of ${MAX_STAT_POINTS_TOTAL} stat points allocated.`,
+          );
+        }
+      }
+    }
+  }
+
+  // 2. Ability matches the Pokémon (case-insensitive).
   const ability = entry.ability.trim();
-  if (species && ability !== "") {
-    const matches = species.abilities.some(
+  if (pokemon && ability !== "") {
+    const matches = pokemon.abilities.some(
       (a) => a.toLowerCase() === ability.toLowerCase(),
     );
-    if (!matches) errors.ability = true;
+    if (!matches) {
+      errors.ability = true;
+      addReason(errors, "ability", `Not an ability ${pokemon.name} can have.`);
+    }
   }
 
   // 3. Moves must be filled in order with no gaps (flagged live): any empty slot
@@ -111,14 +202,23 @@ export function validateEntry(
   );
   const lastFilled = moveFilled.lastIndexOf(true);
   for (let i = 0; i < lastFilled; i++) {
-    if (!moveFilled[i]) errors.moves.add(i);
+    if (!moveFilled[i]) {
+      errors.moves.add(i);
+      addReason(errors, `move:${i}`, "Moves must be filled in order, with no gaps.");
+    }
   }
 
   if (forExport) {
     // 4. At least one move — if none, flag the first slot.
-    if (lastFilled < 0) errors.moves.add(0);
+    if (lastFilled < 0) {
+      errors.moves.add(0);
+      addReason(errors, "move:0", "At least one move is required.");
+    }
     // 5. Ability required.
-    if (ability === "") errors.ability = true;
+    if (ability === "") {
+      errors.ability = true;
+      addReason(errors, "ability", "Ability is required.");
+    }
   }
 
   return errors;
@@ -137,8 +237,44 @@ export function isEmptySlot(entry: PokemonEntry): boolean {
 
 function hasAnyError(e: PokemonErrors): boolean {
   return (
-    e.stats.size > 0 || e.ability || e.moves.size > 0 || e.nature || e.item
+    e.stats.size > 0 ||
+    e.ability ||
+    e.moves.size > 0 ||
+    e.nature ||
+    e.item ||
+    e.species
   );
+}
+
+// Species Clause: a team may not contain two Pokémon of the same Species, i.e.
+// two resolved Pokémon that share a pokedex `num`. Distinct formes of one
+// Species (e.g. Ninetales and Ninetales-Alola, both num 38) count as the same
+// Species and so collide. Flags the name field of every Pokémon in a colliding
+// group (case-insensitive resolution; unresolved names are skipped).
+function flagDuplicateSpecies(
+  team: readonly PokemonEntry[],
+  errors: PokemonErrors[],
+): void {
+  const byNum = new Map<number, number[]>();
+  team.forEach((entry, i) => {
+    const pokemon = findPokemon(entry.displayName);
+    if (!pokemon) return;
+    const list = byNum.get(pokemon.num) ?? [];
+    list.push(i);
+    byNum.set(pokemon.num, list);
+  });
+  for (const indices of byNum.values()) {
+    if (indices.length > 1) {
+      for (const i of indices) {
+        errors[i].species = true;
+        addReason(
+          errors[i],
+          "species",
+          "Another team member is the same species (Species Clause).",
+        );
+      }
+    }
+  }
 }
 
 // Flag held items shared by more than one Pokémon (case-insensitive). Empty
@@ -157,7 +293,10 @@ function flagDuplicateItems(
   });
   for (const indices of byItem.values()) {
     if (indices.length > 1) {
-      for (const i of indices) errors[i].item = true;
+      for (const i of indices) {
+        errors[i].item = true;
+        addReason(errors[i], "item", "Another Pokémon is holding this item.");
+      }
     }
   }
 }
@@ -176,8 +315,10 @@ export function validate(state: AppState, forExport = false): ValidationResult {
     return validateEntry(entry, forExport);
   });
 
-  // Cross-team: duplicate held items are invalid (flagged live).
+  // Cross-team: duplicate held items and the Species Clause are invalid
+  // (flagged live).
   flagDuplicateItems(state.team, team);
+  flagDuplicateSpecies(state.team, team);
 
   const messages: string[] = [];
   const player = new Set<string>();
@@ -190,6 +331,38 @@ export function validate(state: AppState, forExport = false): ValidationResult {
     } else if (count < 6) {
       messages.push(
         `A team should have 6 Pokémon (currently ${count}) — this is probably a mistake.`,
+      );
+    }
+
+    // Under-allocated stat points (a non-empty Pokémon with fewer than 66) are
+    // valid but almost always a mistake — warn once for the whole team. When the
+    // shortfall could be a wasted point on a hindered stat (a ×0.9 floor
+    // collision), say so rather than asserting points are simply missing.
+    let underAllocated = false;
+    let wastedPointPossible = false;
+    for (const entry of state.team) {
+      if (isEmptySlot(entry)) continue;
+      const points = statPoints(entry);
+      if (
+        !points ||
+        points.setKeys.length === 0 ||
+        points.total >= MAX_STAT_POINTS_TOTAL
+      ) {
+        continue;
+      }
+      underAllocated = true;
+      if (
+        points.wastedHindered !== null &&
+        points.total + 1 >= MAX_STAT_POINTS_TOTAL
+      ) {
+        wastedPointPossible = true;
+      }
+    }
+    if (underAllocated) {
+      messages.push(
+        wastedPointPossible
+          ? "Some Pokémon are short of 66 stat points — either points are unallocated or a point is wasted on a hindered (−) stat."
+          : "Some Pokémon have unallocated stat points (66 expected) — this is probably a mistake.",
       );
     }
 
@@ -243,6 +416,57 @@ export function validateLive(state: AppState): ValidationResult {
  */
 export function validateForExport(state: AppState): ValidationResult {
   return validate(state, true);
+}
+
+// Reverse-compute the stat points on each stat that has a value, plus their
+// total. A hindering (×0.9) nature can floor two point counts to the same value,
+// so we assume the MINIMUM points that reach each value (negative/at-minimum
+// counts clamp to 0). When the hindered stat's value could equally have been
+// reached with one more point, `wastedHindered` names it — the shortfall to 66
+// may then be a wasted point rather than missing allocation.
+//
+// Returns null when the Pokémon or nature can't be resolved — without the base
+// stats and alignment the points can't be determined.
+function statPoints(entry: PokemonEntry): {
+  perStat: Map<keyof StatBlock, number>;
+  total: number;
+  setKeys: Array<keyof StatBlock>;
+  wastedHindered: keyof StatBlock | null;
+} | null {
+  const pokemon = findPokemon(entry.displayName);
+  const nature = resolveNature(entry.natureAlignment);
+  if (!pokemon || !nature) return null;
+
+  const perStat = new Map<keyof StatBlock, number>();
+  const setKeys: Array<keyof StatBlock> = [];
+  let total = 0;
+  for (const key of STAT_KEYS) {
+    const value = entry.computedStats[key];
+    // A computed stat is never 0 (the formulas add constants), so 0 means unset.
+    if (!Number.isFinite(value) || value === 0) continue;
+    const n = statPointsFor(pokemon.baseStats, value, nature, key);
+    perStat.set(key, n);
+    setKeys.push(key);
+    total += Math.max(0, n);
+  }
+
+  // A wasted point is only possible on the nature's lowered (hindered) stat, and
+  // only when it's set and one more point than the minimum reaches the same
+  // value (the ×0.9 floor collides).
+  let wastedHindered: keyof StatBlock | null = null;
+  const { plus, minus } = natures[nature];
+  if (minus && minus !== plus && perStat.has(minus)) {
+    const value = entry.computedStats[minus];
+    const min = Math.max(0, perStat.get(minus)!);
+    const withOneMore = computeStats(
+      pokemon.baseStats,
+      { [minus]: min + 1 },
+      nature,
+    )[minus];
+    if (withOneMore === value) wastedHindered = minus;
+  }
+
+  return { perStat, total, setKeys, wastedHindered };
 }
 
 function zeroStatPoints(): Partial<StatBlock> {

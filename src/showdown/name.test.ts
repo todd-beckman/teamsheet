@@ -1,7 +1,7 @@
 // Name / forme / gender normalization tests.
 
 import { describe, it, expect } from "vitest";
-import { normalizeName, canonicalSpecies } from "./name.js";
+import { normalizeName, canonicalForme } from "./name.js";
 
 describe("normalizeName", () => {
   it("strips a trailing (M) gender marker", () => {
@@ -18,14 +18,14 @@ describe("normalizeName", () => {
     });
   });
 
-  it("unwraps Nickname (Species) to the inner species", () => {
+  it("unwraps Nickname (Forme) to the inner forme name", () => {
     expect(normalizeName("Sneaky (Sneasler)")).toEqual({
       displayName: "Sneasler",
       lookupName: "Sneasler",
     });
   });
 
-  it("unwraps Nickname (Species) (F) — gender then nickname", () => {
+  it("unwraps Nickname (Forme) (F) — gender then nickname", () => {
     expect(normalizeName("King (Kingambit) (F)")).toEqual({
       displayName: "Kingambit",
       lookupName: "Kingambit",
@@ -43,7 +43,7 @@ describe("normalizeName", () => {
     });
   });
 
-  it("drops -Mega-Y but keeps the base species", () => {
+  it("drops -Mega-Y but keeps the base name", () => {
     expect(normalizeName("Charizard-Mega-Y")).toEqual({
       displayName: "Charizard",
       lookupName: "Charizard",
@@ -98,14 +98,14 @@ describe("normalizeName", () => {
   });
 });
 
-describe("canonicalSpecies", () => {
+describe("canonicalForme", () => {
   it("aliases Floette / Floette-Mega to Floette-Eternal (case-insensitive)", () => {
-    expect(canonicalSpecies("Floette")).toBe("Floette-Eternal");
-    expect(canonicalSpecies("floette-mega")).toBe("Floette-Eternal");
+    expect(canonicalForme("Floette")).toBe("Floette-Eternal");
+    expect(canonicalForme("floette-mega")).toBe("Floette-Eternal");
   });
 
-  it("leaves Floette-Eternal and other species untouched", () => {
-    expect(canonicalSpecies("Floette-Eternal")).toBe("Floette-Eternal");
-    expect(canonicalSpecies("Pikachu")).toBe("Pikachu");
+  it("leaves Floette-Eternal and other forme names untouched", () => {
+    expect(canonicalForme("Floette-Eternal")).toBe("Floette-Eternal");
+    expect(canonicalForme("Pikachu")).toBe("Pikachu");
   });
 });

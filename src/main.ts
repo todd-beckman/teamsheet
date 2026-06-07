@@ -12,12 +12,13 @@ import { createEmptyState, emptyPokemon, emptyStatBlock } from "./state.js";
 import type {
   AppState,
   PlayerInfo,
+  PokemonErrors,
   StatBlock,
   ValidationResult,
 } from "./types.js";
 import { openImportModal } from "./ui/importModal.js";
 import { parseShowdown } from "./showdown/parse.js";
-import { resolveLookupKey, findSpecies, pokedex } from "./pokedex.js";
+import { resolveLookupKey, findPokemon, pokedex } from "./pokedex.js";
 import {
   validateLive,
   validateForExport,
@@ -43,10 +44,10 @@ const PLAYER_FIELDS_LEFT: Array<{ key: keyof PlayerInfo; label: string }> = [
 
 const AGE_DIVISIONS = ["Juniors", "Seniors", "Masters"];
 
-// All selectable Pokémon species by canonical `name` (e.g. "Indeedee Male"),
-// sorted for the Pokémon combobox.
-const SPECIES_NAMES = Object.values(pokedex)
-  .map((s) => s.name)
+// All selectable Pokémon by canonical `name` (e.g. "Indeedee Male"), one per
+// forme, sorted for the Pokémon combobox.
+const POKEMON_NAMES = Object.values(pokedex)
+  .map((p) => p.name)
   .sort();
 
 // The six computed stats, in display order, as a vertical list.
@@ -65,6 +66,7 @@ const POKEMON_STAT_FIELDS: Array<{
 // Live validation bookkeeping: references to the inputs whose error styling is
 // re-applied on every edit. Rebuilt whenever the team is re-rendered.
 interface CardInputs {
+  name: HTMLInputElement;
   ability: HTMLInputElement;
   nature: HTMLInputElement;
   item: HTMLInputElement;
@@ -72,6 +74,12 @@ interface CardInputs {
   stats: Record<keyof StatBlock, HTMLInputElement>;
 }
 let cardInputs: CardInputs[] = [];
+
+// Index of the card whose name is being edited (focused but not yet committed),
+// or null. While editing, `revalidate()` holds that card's error display: its
+// data is about to be cleared (on a name change) or left as-is (on revert), so
+// re-validating the in-flux Pokémon against a half-typed name is wrong.
+let nameEditIndex: number | null = null;
 
 // Required-player-field wrappers (the `.field` divs), keyed by field id, so the
 // export check can flag empty ones. Populated by `renderPlayerForm`.
@@ -354,7 +362,7 @@ function buildCombobox(
 
 // Clear everything on a Pokémon entry except its name/lookup (item, ability,
 // stat alignment, moves, stats), updating both state and the card's inputs.
-// Used when the Pokémon is changed to a different species.
+// Used when the Pokémon is changed to a different one.
 function clearEntryData(index: number): void {
   const entry = state.team[index];
   entry.item = "";
@@ -430,34 +438,41 @@ function buildPokemonCard(index: number): HTMLDivElement {
   );
   card.append(cardReorder);
 
-  // Full-width Pokémon field: combobox over all available species (free text
+  // Full-width Pokémon field: combobox over all available Pokémon (free text
   // still allowed). Both Floette and Floette-Eternal are selectable.
+  //
+  // The typed name is uncommitted until blur: while editing we leave the entry
+  // (and its validation) untouched, so errors for the still-current Pokémon's
+  // data don't flash against a half-typed name. Typing only filters the
+  // dropdown — committing is the blur handler's job.
   const nameField = buildCombobox(
     "Pokémon",
     entry.displayName,
-    () => SPECIES_NAMES,
-    (value) => {
-      entry.displayName = value;
-      // Resolve the species key so stat-range / ability validation can run.
-      entry.lookupName = resolveLookupKey(value) ?? "";
-      revalidate();
-    },
+    () => POKEMON_NAMES,
+    () => {},
   );
-  // When the Pokémon is changed to a different species (ignoring case), clear
-  // the rest of the entry — the old item/ability/moves/stats no longer apply.
-  // Compared on blur against the value when editing began, so typing to filter
-  // the dropdown and reselecting the same species does not wipe the data.
-  let nameAtFocus = entry.displayName;
+  // Mark this card as mid-edit so revalidate() holds its error display until the
+  // name is committed (blur).
   nameField.input.addEventListener("focus", () => {
-    nameAtFocus = entry.displayName;
+    nameEditIndex = index;
   });
   nameField.input.addEventListener("blur", () => {
-    if (
-      entry.displayName.trim().toLowerCase() !==
-      nameAtFocus.trim().toLowerCase()
-    ) {
+    nameEditIndex = null;
+    const typed = nameField.input.value;
+    const changed =
+      typed.trim().toLowerCase() !== entry.displayName.trim().toLowerCase();
+    if (changed) {
+      // Committed a different Pokémon: adopt the name and clear the rest of the
+      // entry — the old item/ability/moves/stats no longer apply.
+      entry.displayName = typed;
+      // Resolve the pokedex key so stat-range / ability validation can run.
+      entry.lookupName = resolveLookupKey(typed) ?? "";
       clearEntryData(index);
       revalidate();
+    } else {
+      // Reverted to the same Pokémon: discard any typed-then-undone edits so the
+      // field shows the canonical name again.
+      nameField.input.value = entry.displayName;
     }
   });
   card.append(nameField.field);
@@ -482,12 +497,12 @@ function buildPokemonCard(index: number): HTMLDivElement {
   const left = document.createElement("div");
   left.className = "pokemon-col";
 
-  // Ability: combobox suggesting the current species' abilities (read live, so
+  // Ability: combobox suggesting the current Pokémon's abilities (read live, so
   // it reflects whatever Name is typed when the dropdown opens).
   const abilityField = buildCombobox(
     "Ability",
     entry.ability,
-    () => findSpecies(entry.displayName)?.abilities ?? [],
+    () => findPokemon(entry.displayName)?.abilities ?? [],
     (value) => {
       entry.ability = value;
       revalidate();
@@ -541,6 +556,7 @@ function buildPokemonCard(index: number): HTMLDivElement {
   }
 
   cardInputs[index] = {
+    name: nameField.input,
     ability: abilityField.input,
     nature: alignmentField.input,
     item: itemField.input,
@@ -572,29 +588,53 @@ function renderTeam(_currentState: AppState): void {
   revalidate();
 }
 
-// Run live validation and apply error styling to the flagged inputs.
+// Run live validation and apply error styling to the flagged inputs. The card
+// whose name is mid-edit is held (its display left untouched) until commit.
 function revalidate(): void {
   const result = validateLive(state);
   result.team.forEach((errors, i) => {
+    if (i === nameEditIndex) return;
     const inputs = cardInputs[i];
-    if (!inputs) return;
-    setError(inputs.ability, errors.ability);
-    setError(inputs.nature, errors.nature);
-    setError(inputs.item, errors.item);
-    inputs.moves.forEach((input, m) => setError(input, errors.moves.has(m)));
-    for (const { key } of POKEMON_STAT_FIELDS) {
-      setError(inputs.stats[key], errors.stats.has(key));
-    }
+    if (inputs) applyEntryErrors(inputs, errors);
   });
 }
 
-function setError(input: HTMLInputElement, on: boolean): void {
-  input.classList.toggle("field-error", on);
+// Apply one Pokémon's error flags (and their reason tooltips) to its inputs.
+function applyEntryErrors(inputs: CardInputs, errors: PokemonErrors): void {
+  const reason = (key: string): string | undefined => errors.reasons.get(key);
+  setError(inputs.name, errors.species, reason("species"));
+  setError(inputs.ability, errors.ability, reason("ability"));
+  setError(inputs.nature, errors.nature, reason("nature"));
+  setError(inputs.item, errors.item, reason("item"));
+  inputs.moves.forEach((input, m) =>
+    setError(input, errors.moves.has(m), reason(`move:${m}`)),
+  );
+  for (const { key } of POKEMON_STAT_FIELDS) {
+    setError(inputs.stats[key], errors.stats.has(key), reason(`stat:${key}`));
+  }
 }
 
-// Clear the export-time "required" error on a player field as it's edited.
+// Toggle the error styling on an input and, while flagged, show the reason as a
+// hover/focus tooltip on its `.field` wrapper (cleared when the field is valid).
+function setError(input: HTMLInputElement, on: boolean, reason?: string): void {
+  input.classList.toggle("field-error", on);
+  setFieldTooltip(input.closest(".field"), on ? reason : undefined);
+}
+
+// Set (or clear) the tooltip reason on a `.field` wrapper.
+function setFieldTooltip(field: Element | null, reason?: string): void {
+  if (!field) return;
+  if (reason) field.setAttribute("data-tooltip", reason);
+  else field.removeAttribute("data-tooltip");
+}
+
+// Clear the export-time "required" error (and its tooltip) on a player field as
+// it's edited.
 function clearPlayerError(id: string): void {
-  playerFieldEls[id]?.classList.remove("field-invalid");
+  const field = playerFieldEls[id];
+  if (!field) return;
+  field.classList.remove("field-invalid");
+  field.removeAttribute("data-tooltip");
 }
 
 function renderImportButton(container: HTMLElement): void {
@@ -636,18 +676,15 @@ function applyExportErrors(): ValidationResult {
   const result = validateForExport(state);
   result.team.forEach((errors, i) => {
     const inputs = cardInputs[i];
-    if (!inputs) return;
-    setError(inputs.ability, errors.ability);
-    setError(inputs.nature, errors.nature);
-    setError(inputs.item, errors.item);
-    inputs.moves.forEach((input, m) => setError(input, errors.moves.has(m)));
-    for (const { key } of POKEMON_STAT_FIELDS) {
-      setError(inputs.stats[key], errors.stats.has(key));
-    }
+    if (inputs) applyEntryErrors(inputs, errors);
   });
-  // Required player fields that are empty.
+  // Required player fields that are empty (with a reason tooltip on the field).
   for (const id of PLAYER_REQUIRED_FIELDS) {
-    playerFieldEls[id]?.classList.toggle("field-invalid", result.player.has(id));
+    const field = playerFieldEls[id];
+    if (!field) continue;
+    const invalid = result.player.has(id);
+    field.classList.toggle("field-invalid", invalid);
+    setFieldTooltip(field, invalid ? "This field is required." : undefined);
   }
   return result;
 }
@@ -676,7 +713,8 @@ async function handleExport(): Promise<void> {
         e.ability ||
         e.moves.size > 0 ||
         e.nature ||
-        e.item,
+        e.item ||
+        e.species,
     );
     if (hasFieldError) {
       reasons.push("Some Pokémon fields are invalid (highlighted in red).");

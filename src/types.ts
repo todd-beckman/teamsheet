@@ -46,6 +46,11 @@ export interface PokemonEntry {
  *               before a filled one), and, on export with no moves, slot 0.
  * - `nature`  — stat alignment is non-empty but not one of the 25 natures.
  * - `item`    — held item duplicates another Pokémon's item (no-item repeats OK).
+ * - `species` — Species Clause violation: another team member is the same Species
+ *               (shares the pokedex `num`). Flagged on the name field.
+ * - `reasons` — human-readable explanation per flagged field, for tooltips.
+ *               Keyed `stat:<key>` (e.g. `stat:hp`), `ability`, `move:<i>`,
+ *               `nature`, `item`, `species`.
  */
 export interface PokemonErrors {
   stats: Set<keyof StatBlock>;
@@ -53,6 +58,8 @@ export interface PokemonErrors {
   moves: Set<number>;
   nature: boolean;
   item: boolean;
+  species: boolean;
+  reasons: Map<string, string>;
 }
 
 /** Aggregate validation result for the whole app. */
