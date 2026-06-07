@@ -269,6 +269,24 @@ describe("rule 2b: moves filled in order / no gaps (live)", () => {
   });
 });
 
+describe("rule 2c: no duplicate moves (live, case-insensitive)", () => {
+  it("flags the later slot of a repeated move (case-insensitive)", () => {
+    const mon = validIncineroar();
+    mon.moves = ["Fake Out", "Flare Blitz", "fake out", "Parting Shot"];
+    const errors = validateEntry(mon);
+    expect(errors.moves.has(2)).toBe(true);
+    expect(errors.moves.has(0)).toBe(false);
+    expect(errors.moves.has(1)).toBe(false);
+    expect(errors.moves.has(3)).toBe(false);
+  });
+
+  it("accepts four distinct moves", () => {
+    const mon = validIncineroar();
+    mon.moves = ["Fake Out", "Flare Blitz", "Throat Chop", "Parting Shot"];
+    expect(validateEntry(mon).moves.size).toBe(0);
+  });
+});
+
 describe("rule 2/3: ≥1 move and ability present (export only)", () => {
   it("flags the first move slot when no moves on export", () => {
     const mon = validIncineroar();

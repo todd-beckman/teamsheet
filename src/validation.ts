@@ -208,6 +208,21 @@ export function validateEntry(
     }
   }
 
+  // 3b. No duplicate moves (flagged live, case-insensitive): a Pokémon may not
+  //     hold the same move more than once. Flag every slot after the first that
+  //     repeats an already-seen move.
+  const seenMoves = new Set<string>();
+  for (let i = 0; i < 4; i++) {
+    const move = (entry.moves[i] ?? "").trim().toLowerCase();
+    if (move === "") continue;
+    if (seenMoves.has(move)) {
+      errors.moves.add(i);
+      addReason(errors, `move:${i}`, "This move is already on this Pokémon.");
+    } else {
+      seenMoves.add(move);
+    }
+  }
+
   if (forExport) {
     // 4. At least one move — if none, flag the first slot.
     if (lastFilled < 0) {
